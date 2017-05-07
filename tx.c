@@ -30,8 +30,9 @@
 int main(int argc, char *argv[])
 {
     char tun[100];
-
+    char buffer[1500];
     int tun_tx_fd;
+    int nread;
 
     if(argc < 3)
     {
@@ -42,6 +43,20 @@ int main(int argc, char *argv[])
     strcpy(tun,argv[2]);
 
     tun_tx_fd = init_tun(tun);
+
+    while(1)
+    {
+        memset(buffer, 0, sizeof(buffer));
+        nread = read(tun_tx_fd, buffer, sizeof(buffer));
+        if (nread < 0) {
+            perror("Reading from interface");
+            close(tun_tx_fd);
+            exit(1);
+        }
+        show_tun_packet(buffer);
+
+
+    }
 
 
 }

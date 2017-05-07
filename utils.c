@@ -79,3 +79,10 @@ char * create_tun_packet(char* payload)
 {
     return NULL;
 }
+
+void show_tun_packet(char* buffer)
+{
+    struct ip* packet = (struct ip*)buffer;
+
+    printf("%s -> %s : %d\n", inet_ntoa(packet->ip_src), inet_ntoa(packet->ip_dst), ntohs(packet->ip_len));
+}
