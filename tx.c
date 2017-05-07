@@ -22,9 +22,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <fcntl.h>
-
-
-#include "utils.c"
+#include <libbladeRF.h>
 
 
 int main(int argc, char *argv[])

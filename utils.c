@@ -22,10 +22,21 @@
 #include <stdio.h>
 #include <math.h>
 #include <fcntl.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <libbladeRF.h>
+#include <math.h>
+#include <sys/time.h>
 
 
 int init_bladerf()
 {
+    struct bladerf_devinfo dev_info;
+
+    bladerf_init_devinfo(&dev_info);
+
     return 0;
 }
 
