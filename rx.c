@@ -25,6 +25,8 @@
 #include <libbladeRF.h>
 
 
+#include "utils.c"
+
 int main(int argc, char *argv[])
 {
 

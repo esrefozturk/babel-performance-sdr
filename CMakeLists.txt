@@ -10,15 +10,13 @@ link_directories(/opt/local/lib)
 
 add_executable( rx
     ${PROJECT_SOURCE_DIR}/rx.c
-	${PROJECT_SOURCE_DIR}/utils.c
+
 )
 add_executable( tx
     ${PROJECT_SOURCE_DIR}/tx.c
-	${PROJECT_SOURCE_DIR}/utils.c
+
 )
 
 
 target_link_libraries(rx bladeRF m c liquid)
 target_link_libraries(tx bladeRF m c liquid)
-
-

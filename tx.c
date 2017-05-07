@@ -25,12 +25,16 @@
 #include <libbladeRF.h>
 
 
+#include "utils.c"
+
+
 int main(int argc, char *argv[])
 {
     char tun[100];
     char buffer[1500];
     int tun_tx_fd;
     int nread;
+    char serial[100];
 
     if(argc < 3)
     {
@@ -38,9 +42,12 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    strcpy(serial,argv[1]);
     strcpy(tun,argv[2]);
 
+    init_bladerf(serial, TX_MODULE);
     tun_tx_fd = init_tun(tun);
+
 
     while(1)
     {
