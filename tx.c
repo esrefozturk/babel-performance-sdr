@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
             exit(1);
         }
         show_tun_packet(buffer);
-
+        //TODO: send packet to bladerf
 
     }
 

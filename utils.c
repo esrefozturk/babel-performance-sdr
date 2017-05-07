@@ -255,6 +255,10 @@ int init_bladerf(char* serial, int MODULE_TYPE)
 
         exit(1);
     }
+
+    bladerf_load_fpga(dev, "./hostedx115-latest.rbf");
+    
+
     if( MODULE_TYPE == TX_MODULE )
     {
         config.module     = BLADERF_MODULE_TX;
