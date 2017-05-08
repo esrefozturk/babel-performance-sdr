@@ -502,11 +502,14 @@ int transmit_bladerf_packet(flexframegen fg, unsigned char header[8], struct bla
     int status;
     int16_t *tx_samples;
 
+    struct ip* packet = (struct ip*)buffer;
+    header[0] = ntohs(packet->ip_len);
+
     memset(payload, 0x00, PAYLOAD_LENGTH);
     int i;
-    for(i=0;i<84;i++)
+    for(i=0;i<ntohs(packet->ip_len);i++)
         payload[i] = buffer[i];
-    memset(&payload[84], 0x00, PAYLOAD_LENGTH - 84);
+    memset(&payload[ntohs(packet->ip_len)], 0x00, PAYLOAD_LENGTH - ntohs(packet->ip_len));
 
 
     flexframegen_assemble(fg, header, payload, PAYLOAD_LENGTH);
@@ -538,8 +541,8 @@ static int receive_bladerf_packet(unsigned char *_header,
 {
     if (_header_valid)
     {
-        printf("%d\n",_payload_len);
-        write(tun_rx_fd, (void*)_payload, 84);
+        printf("%d\n",_header[0]);
+        write(tun_rx_fd, (void*)_payload, _header[0]);
     }
     return 0;
 }
