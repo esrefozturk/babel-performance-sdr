@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
     int tun_tx_fd;
     int nread;
     char serial[100];
+    struct bladerf *dev_tx;
 
     if(argc < 3)
     {
@@ -45,7 +46,7 @@ int main(int argc, char *argv[])
     strcpy(serial,argv[1]);
     strcpy(tun,argv[2]);
 
-    init_bladerf(serial, TX_MODULE);
+    dev_tx = init_bladerf(serial, TX_MODULE);
     tun_tx_fd = init_tun(tun);
 
 
@@ -59,7 +60,8 @@ int main(int argc, char *argv[])
             exit(1);
         }
         show_tun_packet(buffer);
-        //TODO: send packet to bladerf
+
+        transmit_bladerf_packet(buffer);
 
     }
 

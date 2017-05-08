@@ -237,7 +237,7 @@ int calibrate(struct bladerf *dev)
 
 
 
-int init_bladerf(char* serial, int MODULE_TYPE)
+struct bladerf* init_bladerf(char* serial, int MODULE_TYPE)
 {
     struct bladerf_devinfo dev_info;
     struct bladerf *dev = NULL;
@@ -257,7 +257,7 @@ int init_bladerf(char* serial, int MODULE_TYPE)
     }
 
     bladerf_load_fpga(dev, "./hostedx115-latest.rbf");
-    
+
 
     if( MODULE_TYPE == TX_MODULE )
     {
@@ -298,7 +298,7 @@ int init_bladerf(char* serial, int MODULE_TYPE)
 
     calibrate(dev);
 
-    return 0;
+    return dev;
 }
 
 int init_tun(char* tun)
@@ -335,6 +335,12 @@ int init_tun(char* tun)
 
     return fd;
 }
+
+void transmit_bladerf_packet(char* buffer)
+{
+
+}
+
 
 char* bladerf_packet_to_tun_packet(char* bladerf_packet)
 {
