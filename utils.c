@@ -50,6 +50,9 @@
 #define RX_MODULE 1
 
 
+flexframesync fs;
+int tun_rx_fd;
+
 struct module_config {
     bladerf_module module;
 
@@ -63,6 +66,20 @@ struct module_config {
     int vga2;
 };
 
+
+float complex * convert_sc16q11_to_comlexfloat 	( int16_t * in, int16_t inlen )
+{
+
+int i=0;
+float complex * out = NULL;
+out = (float complex *)malloc(inlen * sizeof(float complex));
+if (out != NULL) {
+for(i = 0; i < inlen ; i++){
+out[i]= in[2*i]/2048.0 + in[2*i+1]/2048.0 * I;
+}
+}
+return (float complex *)out;
+}
 
 
 int16_t * 		convert_comlexfloat_to_sc16q11 	( float complex *in, unsigned int  inlen  )
@@ -82,6 +99,32 @@ if ( out[2*i+1] < -2048  ) out[2*i+1]=-2048;
 }
 return (int16_t *)out;
 }
+
+int process_samples(int16_t *samples, unsigned int sample_length) {
+    int status = 0;
+    float complex
+    *y = convert_sc16q11_to_comlexfloat(samples, sample_length);
+    if (y != NULL) {
+        for (int i = 0; i <= sample_length; i = i + 32)
+            flexframesync_execute(fs, &y[i], 32);
+        free(y);
+    } else {
+        status = BLADERF_ERR_MEM;
+    }
+    return status;
+}
+
+
+
+void show_tun_packet(char* buffer)
+{
+    struct ip* packet = (struct ip*)buffer;
+
+    printf("%s -> %s : %d\n", inet_ntoa(packet->ip_src), inet_ntoa(packet->ip_dst), ntohs(packet->ip_len));
+}
+
+
+
 
 
 int sync_tx(struct bladerf *dev,int16_t *tx_samples, unsigned int samples_len)
@@ -381,12 +424,12 @@ struct bladerf* init_bladerf(char* serial, int MODULE_TYPE)
     else
     {
         config.module     = BLADERF_MODULE_RX;
-        config.frequency  = 910000000;
-        config.bandwidth  = 2000000;
-        config.samplerate = 300000;
+        config.frequency  = FREQUENCY_USED;
+        config.bandwidth  = BANDWIDTH_USED;
+        config.samplerate = SAMPLING_RATE_USED;
         config.rx_lna     = BLADERF_LNA_GAIN_MAX;
-        config.vga1       = 30;
-        config.vga2       = 3;
+        config.vga1       = 10;
+        config.vga2       = 0;
     }
 
     status = configure_module(dev, &config);
@@ -411,7 +454,7 @@ struct bladerf* init_bladerf(char* serial, int MODULE_TYPE)
     return dev;
 }
 
-int init_tun(char* tun)
+int init_tun(char* tun, char* ip, char* netmask, char* route)
 {
     char tun_path[100] = "/dev/";
     char syscall1[100];
@@ -421,10 +464,10 @@ int init_tun(char* tun)
 
     strcat(tun_path,tun);
 
-    sprintf(syscall1, "ifconfig %s 10.10.10.1 10.10.10.255", tun);
+    sprintf(syscall1, "ifconfig %s %s %s", tun,ip,netmask);
     sprintf(syscall2, "ifconfig %s up", tun);
     sprintf(syscall3, "ifconfig %s", tun);
-    sprintf(syscall4, "sudo route add 20.20.20/24 -interface %s", tun);
+    sprintf(syscall4, "sudo route add %s -interface %s", route, tun);
 
 
     int fd;
@@ -483,6 +526,21 @@ int transmit_bladerf_packet(flexframegen fg, unsigned char header[8], struct bla
     return status;
 }
 
+static int receive_bladerf_packet(unsigned char *_header,
+                                  int _header_valid,
+                                  unsigned char *_payload,
+                                  unsigned int _payload_len,
+                                  int _payload_valid,
+                                  framesyncstats_s _stats,
+                                  void *_userdata)
+{
+    if (_header_valid)
+    {
+        write(tun_rx_fd, (void*)_payload, _payload_len);
+    }
+    return 0;
+}
+
 
 char* bladerf_packet_to_tun_packet(char* bladerf_packet)
 {
@@ -502,11 +560,4 @@ char* create_bladerf_packet(char* payload)
 char * create_tun_packet(char* payload)
 {
     return NULL;
-}
-
-void show_tun_packet(char* buffer)
-{
-    struct ip* packet = (struct ip*)buffer;
-
-    printf("%s -> %s : %d\n", inet_ntoa(packet->ip_src), inet_ntoa(packet->ip_dst), ntohs(packet->ip_len));
 }

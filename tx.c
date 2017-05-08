@@ -31,6 +31,9 @@
 int main(int argc, char *argv[])
 {
     char tun[100];
+    char ip[100];
+    char netmask[100];
+    char route[100];
     char buffer[1500];
     int tun_tx_fd;
     int nread;
@@ -39,10 +42,13 @@ int main(int argc, char *argv[])
     flexframegenprops_s ffp;
     int i;
 
+
+
+
     flexframegen fg;
     unsigned char header[8];
 
-    if(argc < 3)
+    if(argc < 6)
     {
         perror("Usage: TBD");
         exit(1);
@@ -50,9 +56,13 @@ int main(int argc, char *argv[])
 
     strcpy(serial,argv[1]);
     strcpy(tun,argv[2]);
+    strcpy(ip,argv[3]);
+    strcpy(netmask,argv[4]);
+    strcpy(route,argv[5]);
+
 
     dev_tx = init_bladerf(serial, TX_MODULE);
-    tun_tx_fd = init_tun(tun);
+    tun_tx_fd = init_tun(tun, ip, netmask, route);
 
 
 

@@ -30,11 +30,15 @@
 int main(int argc, char *argv[])
 {
     char tun[100];
+    char ip[100];
+    char netmask[100];
+    char route[100];
     char buffer[1500];
-    int tun_tx_fd;
+
     int nread;
     char serial[100];
-    struct bladerf *dev_tx;
+    struct bladerf *dev_rx;
+    unsigned int frame_counter = 0;
 
     if(argc < 3)
     {
@@ -44,14 +48,14 @@ int main(int argc, char *argv[])
 
     strcpy(serial,argv[1]);
     strcpy(tun,argv[2]);
+    strcpy(ip,argv[3]);
+    strcpy(netmask,argv[4]);
+    strcpy(route,argv[5]);
 
-    dev_tx = init_bladerf(serial, RX_MODULE);
-    tun_tx_fd = init_tun(tun);
+    dev_rx = init_bladerf(serial, RX_MODULE);
+    tun_rx_fd = init_tun(tun, ip, netmask, route);
 
 
-    while(1)
-    {
-        //TODO: read from bladerf, write to tun
-
-    }
+    fs = flexframesync_create(receive_bladerf_packet, (void *) &frame_counter);
+    sync_rx(dev_rx, &process_samples);
 }
