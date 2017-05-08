@@ -503,8 +503,10 @@ int transmit_bladerf_packet(flexframegen fg, unsigned char header[8], struct bla
     int16_t *tx_samples;
 
     memset(payload, 0x00, PAYLOAD_LENGTH);
-    sprintf((char *) payload, "%s", buffer);
-    memset(&payload[strlen(buffer)], 0x00, PAYLOAD_LENGTH - strlen(buffer));
+    int i;
+    for(i=0;i<84;i++)
+        payload[i] = buffer[i];
+    memset(&payload[84], 0x00, PAYLOAD_LENGTH - 84);
 
 
     flexframegen_assemble(fg, header, payload, PAYLOAD_LENGTH);
@@ -536,7 +538,8 @@ static int receive_bladerf_packet(unsigned char *_header,
 {
     if (_header_valid)
     {
-        write(tun_rx_fd, (void*)_payload, _payload_len);
+        printf("%d\n",_payload_len);
+        write(tun_rx_fd, (void*)_payload, 84);
     }
     return 0;
 }

@@ -87,9 +87,7 @@ int main(int argc, char *argv[])
         ffp.mod_scheme = LIQUID_MODEM_QAM4;
 
         flexframegen fg = flexframegen_create(&ffp);
-
-        FILE * f1 = fopen(argv[2], "w");
-        setvbuf ( f1 , NULL , _IONBF , 0 );
+        
 
 
         for (i = 0; i < 8; i++)
