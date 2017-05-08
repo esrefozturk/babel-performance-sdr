@@ -36,6 +36,11 @@ int main(int argc, char *argv[])
     int nread;
     char serial[100];
     struct bladerf *dev_tx;
+    flexframegenprops_s ffp;
+    int i;
+
+    flexframegen fg;
+    unsigned char header[8];
 
     if(argc < 3)
     {
@@ -50,6 +55,7 @@ int main(int argc, char *argv[])
     tun_tx_fd = init_tun(tun);
 
 
+
     while(1)
     {
         memset(buffer, 0, sizeof(buffer));
@@ -61,7 +67,28 @@ int main(int argc, char *argv[])
         }
         show_tun_packet(buffer);
 
-        transmit_bladerf_packet(buffer);
+
+
+
+        flexframegenprops_init_default(&ffp);
+
+        ffp.fec0 = LIQUID_FEC_NONE;
+        ffp.fec1 = LIQUID_FEC_NONE;
+        ffp.mod_scheme = LIQUID_MODEM_QAM4;
+
+        flexframegen fg = flexframegen_create(&ffp);
+
+        FILE * f1 = fopen(argv[2], "w");
+        setvbuf ( f1 , NULL , _IONBF , 0 );
+
+
+        for (i = 0; i < 8; i++)
+            header[i] = i;
+
+
+
+
+        transmit_bladerf_packet(fg, header, dev_tx, buffer);
 
     }
 

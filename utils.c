@@ -29,16 +29,21 @@
 #include <libbladeRF.h>
 #include <math.h>
 #include <sys/time.h>
+#include <math.h>
+#include <complex.h>
+#include <libbladeRF.h>
+#include <liquid/liquid.h>
 
 
 #define  NUMBER_OF_BUFFERS 16
-#define  BUFFER_SIZE    8192*sizeof(int32_t)
+#define  SAMPLE_SET_SIZE 8192
+#define  BUFFER_SIZE    SAMPLE_SET_SIZE*sizeof(int32_t)
 #define  NUMBER_OF_TRANSFERS 8
 #define  TIMEOUT_IN_MS 1000
 #define  FREQUENCY_USED 713000000
 #define  BANDWIDTH_USED 3000000
 #define  SAMPLING_RATE_USED 600000
-#define  PAYLOAD_LENGTH 1400
+#define  PAYLOAD_LENGTH 200
 
 
 #define TX_MODULE 0
@@ -57,6 +62,111 @@ struct module_config {
     int vga1;
     int vga2;
 };
+
+
+
+int16_t * 		convert_comlexfloat_to_sc16q11 	( float complex *in, unsigned int  inlen  )
+{
+int i=0;
+int16_t * out = NULL;
+out = (int16_t *)malloc(inlen * 2 * sizeof(int16_t));
+if (out != NULL) {
+for(i = 0; i < inlen ; i++){
+out[2*i]= round( crealf(in[i]) * 2048); // Since bladeRF uses Q4.11 complex 2048=2^11
+out[2*i+1]= round( cimagf(in[i]) * 2048);
+if ( out[2*i] > 2047  ) out[2*i]=2047;
+if ( out[2*i] < -2048  ) out[2*i]=-2048;
+if ( out[2*i+1] > 2047  ) out[2*i+1]=2047;
+if ( out[2*i+1] < -2048  ) out[2*i+1]=-2048;
+}
+}
+return (int16_t *)out;
+}
+
+
+int sync_tx(struct bladerf *dev,int16_t *tx_samples, unsigned int samples_len)
+{
+    int status = 0;
+
+    bladerf_enable_module(dev, BLADERF_MODULE_TX, true);
+    struct bladerf_metadata meta;
+    memset(&meta, 0, sizeof(meta));
+
+    //   meta.flags = BLADERF_META_FLAG_TX_NOW;
+    meta.flags = BLADERF_META_FLAG_TX_BURST_START;
+
+
+    status = bladerf_sync_tx(dev, tx_samples, samples_len, &meta, 5000);
+    if (meta.status != 0) {
+        fprintf(stderr, "Failed to TX samples: %s\n",bladerf_strerror(meta.status));
+    }
+    if (meta.actual_count > 0 )
+        fprintf(stdout, "Meta Flag Actual Count = %u\n", meta.actual_count );
+
+
+    return status;
+}
+
+
+int sync_rx(struct bladerf *dev, int (*process_samples)(int16_t *, unsigned int))
+{
+    int status=0, ret;
+    bool done = false;
+    /* "User" samples buffers and their associated sizes, in units of samples.
+     * Recall that one sample = two int16_t values. */
+    int16_t *rx_samples = NULL;
+    unsigned int samples_len = SAMPLE_SET_SIZE; /* May be any (reasonable) size */
+    /* Allocate a buffer to store received samples in */
+    rx_samples = malloc(samples_len * 2 * sizeof(int16_t));
+    if (rx_samples == NULL) {
+        fprintf(stdout, "malloc error: %s\n", bladerf_strerror(status));
+        return BLADERF_ERR_MEM;
+    }
+
+    bladerf_enable_module(dev, BLADERF_MODULE_RX, true);
+    struct bladerf_metadata meta;
+    memset(&meta, 0, sizeof(meta));
+    /* Retrieve the current timestamp */
+    if ((status=bladerf_get_timestamp(dev, BLADERF_MODULE_RX, &meta.timestamp)) != 0) {
+        fprintf(stderr,"Failed to get current RX timestamp: %s\n",bladerf_strerror(status));
+    }
+    else
+    {
+        printf("Current RX timestamp: 0x%016"PRIx64"\n", meta.timestamp);
+    }
+
+    meta.flags = BLADERF_META_FLAG_RX_NOW;
+
+    while (status == 0) {
+        /* Receive samples */
+        status = bladerf_sync_rx(dev, rx_samples, samples_len, &meta, 5000);
+        //fprintf(stdout, "Meta Flag Actual Count = %u\n", meta.actual_count );
+        if (status == 0) {
+            /* TODO Process these samples, and potentially produce a response to transmit */
+            done = process_samples(rx_samples, meta.actual_count);
+        } else {
+            fprintf(stderr, "Failed to RX samples: %s\n", bladerf_strerror(status));
+        }
+    }
+    if (status == 0) {
+        /* Wait a few seconds for any remaining TX samples to finish
+         * reaching the RF front-end */
+        usleep(2000000);
+    }
+    out:
+    ret = status;
+    /* Free up our resources */
+    free(rx_samples);
+    return ret;
+
+}
+
+
+
+
+
+
+
 
 int configure_module(struct bladerf *dev, struct module_config *c)
 {
@@ -336,9 +446,41 @@ int init_tun(char* tun)
     return fd;
 }
 
-void transmit_bladerf_packet(char* buffer)
+int transmit_bladerf_packet(flexframegen fg, unsigned char header[8], struct bladerf* dev_tx, char* buffer)
 {
+    unsigned char payload[PAYLOAD_LENGTH] = {0};
+    unsigned int symbol_len;
+    int frame_complete = 0;
+    int lastpos = 0;
+    unsigned int buf_len = PAYLOAD_LENGTH;
+    float complex buf[buf_len];
+    float complex y[BUFFER_SIZE];
+    unsigned int samples_len = SAMPLE_SET_SIZE;
+    int status;
+    int16_t *tx_samples;
 
+    memset(payload, 0x00, PAYLOAD_LENGTH);
+    sprintf((char *) payload, "%s", buffer);
+    memset(&payload[strlen(buffer)], 0x00, PAYLOAD_LENGTH - strlen(buffer));
+
+
+    flexframegen_assemble(fg, header, payload, PAYLOAD_LENGTH);
+    symbol_len = flexframegen_getframelen(fg);
+
+    frame_complete = 0;
+    lastpos = 0;
+    while (!frame_complete) {
+        frame_complete = flexframegen_write_samples(fg, buf, buf_len);
+        memcpy(&y[lastpos], buf, buf_len * sizeof(float complex));
+        lastpos = lastpos + buf_len;
+    }
+
+    samples_len = symbol_len;
+    tx_samples = convert_comlexfloat_to_sc16q11(y, symbol_len);
+
+    status = sync_tx(dev_tx, tx_samples, samples_len);
+
+    return status;
 }
 
 
