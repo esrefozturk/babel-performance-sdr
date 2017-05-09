@@ -56,40 +56,36 @@ pthread_t tid2;
 char buffer[1500];
 
 
-char tun_rx[100];
-char ip_rx[100];
-char netmask_rx[100];
-char route_rx[100];
-char serial_tx[100];
-int tun_tx_fd;
 
+char tun[100];
+char ip[100];
+char netmask[100];
+char route[100];
+char serial[100];
+int tun_fd;
 
-
-struct bladerf *dev_tx;
-flexframegenprops_s ffp;
-int i;
-flexframegen fg;
 unsigned char header[8];
 
 
+struct bladerf *dev;
 
 
-char tun_tx[100];
-char ip_tx[100];
-char netmask_tx[100];
-char route_tx[100];
-char serial_rx[100];
-int tun_rx_fd;
+flexframegenprops_s ffp;
+int i;
+flexframegen fg;
 
-struct bladerf *dev_rx;
+
+
+
+
+
 unsigned int frame_counter = 0;
 
 
-
-
-
 flexframesync fs;
-int tun_rx_fd;
+
+
+
 
 struct module_config {
     bladerf_module module;
@@ -431,8 +427,9 @@ int calibrate(struct bladerf *dev)
 struct bladerf* init_bladerf(char* serial, int MODULE_TYPE)
 {
     struct bladerf_devinfo dev_info;
-    struct bladerf *dev = NULL;
-    struct module_config config;
+    struct module_config config_rx;
+    struct module_config config_tx;
+
     int status;
 
     bladerf_init_devinfo(&dev_info);
@@ -450,41 +447,43 @@ struct bladerf* init_bladerf(char* serial, int MODULE_TYPE)
     bladerf_load_fpga(dev, "./hostedx115-latest.rbf");
 
 
-    if( MODULE_TYPE == TX_MODULE )
-    {
-        config.module     = BLADERF_MODULE_TX;
-        config.frequency  = FREQUENCY_USED;
-        config.bandwidth  = BANDWIDTH_USED;
-        config.samplerate = SAMPLING_RATE_USED;
-        config.vga1       = 10;
-        config.vga2       = 0;
-    }
-    else
-    {
-        config.module     = BLADERF_MODULE_RX;
-        config.frequency  = FREQUENCY_USED;
-        config.bandwidth  = BANDWIDTH_USED;
-        config.samplerate = SAMPLING_RATE_USED;
-        config.rx_lna     = BLADERF_LNA_GAIN_MAX;
-        config.vga1       = 10;
-        config.vga2       = 0;
-    }
 
-    status = configure_module(dev, &config);
+        config_rx.module     = BLADERF_MODULE_TX;
+        config_rx.frequency  = FREQUENCY_USED;
+        config_rx.bandwidth  = BANDWIDTH_USED;
+        config_rx.samplerate = SAMPLING_RATE_USED;
+
+        config_rx.vga1       = 10;
+        config_rx.vga2       = 0;
+
+        config_tx.module     = BLADERF_MODULE_RX;
+        config_tx.frequency  = FREQUENCY_USED;
+        config_tx.bandwidth  = BANDWIDTH_USED;
+        config_tx.samplerate = SAMPLING_RATE_USED;
+        config_tx.vga1       = 10;
+        config_tx.vga2       = 0;
+        config_tx.rx_lna     = BLADERF_LNA_GAIN_MAX;
+
+
+    status = configure_module(dev, &config_rx);
     if (status != 0) {
         fprintf(stderr, "Failed to configure module. Exiting.\n");
         bladerf_close(dev);
         exit(1);
     }
 
-    if( MODULE_TYPE == TX_MODULE )
-    {
-        init_sync_tx(dev);
+    status = configure_module(dev, &config_tx);
+    if (status != 0) {
+        fprintf(stderr, "Failed to configure module. Exiting.\n");
+        bladerf_close(dev);
+        exit(1);
     }
-    else
-    {
-        init_sync_rx(dev);
-    }
+
+
+    init_sync_tx(dev);
+
+    init_sync_rx(dev);
+
 
 
     calibrate(dev);
@@ -492,7 +491,7 @@ struct bladerf* init_bladerf(char* serial, int MODULE_TYPE)
     return dev;
 }
 
-int init_tun(char* tun, char* ip, char* netmask, char* route)
+void init_tun(char* tun, char* ip, char* netmask, char* route)
 {
     char tun_path[100] = "/dev/";
     char syscall1[100];
@@ -508,8 +507,9 @@ int init_tun(char* tun, char* ip, char* netmask, char* route)
     sprintf(syscall4, "sudo route add %s -interface %s", route, tun);
 
 
-    int fd;
-    if((fd = open(tun_path, O_RDWR)) == -1)
+
+
+    if((tun_fd = open(tun_path, O_RDWR)) == -1)
     {
             perror("Cannot open");
             exit(1);
@@ -524,7 +524,7 @@ int init_tun(char* tun, char* ip, char* netmask, char* route)
     if(system(syscall4))
         exit(1);
 
-    return fd;
+    return ;
 }
 
 int transmit_bladerf_packet(flexframegen fg, unsigned char header[8], struct bladerf* dev_tx, char* buffer)
@@ -580,7 +580,7 @@ static int receive_bladerf_packet(unsigned char *_header,
     if (_header_valid)
     {
         printf("%d\n",_header[0]);
-        write(tun_rx_fd, (void*)_payload, _header[0]);
+        write(tun_fd, (void*)_payload, _header[0]);
     }
     return 0;
 }
@@ -596,11 +596,12 @@ void* do_TX(void *arg)
 
     while(1)
     {
+
         memset(buffer, 0, sizeof(buffer));
-        nread = read(tun_tx_fd, buffer, sizeof(buffer));
+        nread = read(tun_fd, buffer, sizeof(buffer));
         if (nread < 0) {
             perror("Reading from interface");
-            close(tun_tx_fd);
+            close(tun_fd);
             exit(1);
         }
         show_tun_packet(buffer);
@@ -624,14 +625,15 @@ void* do_TX(void *arg)
 
 
 
-        transmit_bladerf_packet(fg, header, dev_tx, buffer);
+        transmit_bladerf_packet(fg, header, dev, buffer);
 
     }
 }
 
 void* do_RX(void *arg)
 {
+
     fs = flexframesync_create(receive_bladerf_packet, (void *) &frame_counter);
-    sync_rx(dev_rx, &process_samples);
+    sync_rx(dev, &process_samples);
     return NULL;
 }

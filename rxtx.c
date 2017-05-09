@@ -32,45 +32,27 @@
 int main(int argc, char *argv[])
 {
 
-
-
-
-
-
     if(argc < 6)
     {
         perror("Usage: TBD");
         exit(1);
     }
 
-    strcpy(serial_rx,argv[1]);
-    strcpy(tun_rx,argv[2]);
-    strcpy(ip_rx,argv[3]);
-    strcpy(netmask_rx,argv[4]);
-    strcpy(route_rx,argv[5]);
-
-    strcpy(serial_tx,argv[6]);
-    strcpy(tun_tx,argv[7]);
-    strcpy(ip_tx,argv[8]);
-    strcpy(netmask_tx,argv[9]);
-    strcpy(route_tx,argv[10]);
+    strcpy(serial,argv[1]);
+    strcpy(tun,argv[2]);
+    strcpy(ip,argv[3]);
+    strcpy(netmask,argv[4]);
+    strcpy(route,argv[5]);
 
 
-
-
-    dev_tx = init_bladerf(serial_tx, TX_MODULE);
-    tun_tx_fd = init_tun(tun_tx, ip_tx, netmask_tx, route_tx);
-
-    dev_rx = init_bladerf(serial_rx, RX_MODULE);
-    tun_rx_fd = init_tun(tun_rx, ip_rx, netmask_rx, route_rx);
-
+    init_bladerf(serial, TX_MODULE);
+    init_tun(tun, ip, netmask, route);
 
 
 
     pthread_create(&tid1, NULL, do_TX, NULL);
-
     pthread_create(&tid2, NULL, do_RX, NULL);
 
 
-
+    while(1);
 }
