@@ -33,6 +33,7 @@
 #include <complex.h>
 #include <libbladeRF.h>
 #include <liquid/liquid.h>
+#include <pthread.h>
 
 
 #define  NUMBER_OF_BUFFERS 16
@@ -48,6 +49,43 @@
 
 #define TX_MODULE 0
 #define RX_MODULE 1
+
+pthread_t tid1;
+pthread_t tid2;
+
+char buffer[1500];
+
+
+char tun_rx[100];
+char ip_rx[100];
+char netmask_rx[100];
+char route_rx[100];
+char serial_tx[100];
+int tun_tx_fd;
+
+
+
+struct bladerf *dev_tx;
+flexframegenprops_s ffp;
+int i;
+flexframegen fg;
+unsigned char header[8];
+
+
+
+
+char tun_tx[100];
+char ip_tx[100];
+char netmask_tx[100];
+char route_tx[100];
+char serial_rx[100];
+int tun_rx_fd;
+
+struct bladerf *dev_rx;
+unsigned int frame_counter = 0;
+
+
+
 
 
 flexframesync fs;
@@ -548,22 +586,52 @@ static int receive_bladerf_packet(unsigned char *_header,
 }
 
 
-char* bladerf_packet_to_tun_packet(char* bladerf_packet)
+
+
+
+
+void* do_TX(void *arg)
 {
-    return NULL;
+    int nread;
+
+    while(1)
+    {
+        memset(buffer, 0, sizeof(buffer));
+        nread = read(tun_tx_fd, buffer, sizeof(buffer));
+        if (nread < 0) {
+            perror("Reading from interface");
+            close(tun_tx_fd);
+            exit(1);
+        }
+        show_tun_packet(buffer);
+
+
+
+
+        flexframegenprops_init_default(&ffp);
+
+        ffp.fec0 = LIQUID_FEC_NONE;
+        ffp.fec1 = LIQUID_FEC_NONE;
+        ffp.mod_scheme = LIQUID_MODEM_QAM4;
+
+        flexframegen fg = flexframegen_create(&ffp);
+
+
+
+        for (i = 0; i < 8; i++)
+        header[i] = i;
+
+
+
+
+        transmit_bladerf_packet(fg, header, dev_tx, buffer);
+
+    }
 }
 
-char* tun_packet_to_bladerf_packet(char* tun_packet)
+void* do_RX(void *arg)
 {
-    return NULL;
-}
-
-char* create_bladerf_packet(char* payload)
-{
-    return NULL;
-}
-
-char * create_tun_packet(char* payload)
-{
+    fs = flexframesync_create(receive_bladerf_packet, (void *) &frame_counter);
+    sync_rx(dev_rx, &process_samples);
     return NULL;
 }
