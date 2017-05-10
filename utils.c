@@ -507,6 +507,11 @@ void init_tun(char* tun, char* ip, char* netmask, char* route)
     sprintf(syscall4, "sudo route add %s -interface %s", route, tun);
 
 
+    printf("%s\n",syscall1);
+    printf("%s\n",syscall2);
+    printf("%s\n",syscall3);
+    printf("%s\n",syscall4);
+
 
 
     if((tun_fd = open(tun_path, O_RDWR)) == -1)
@@ -579,7 +584,9 @@ static int receive_bladerf_packet(unsigned char *_header,
 {
     if (_header_valid)
     {
-        printf("%d\n",_header[0]);
+        struct ip* packet = (struct ip*)_payload;
+
+        printf("Received: %s -> %s : %d\n", inet_ntoa(packet->ip_src), inet_ntoa(packet->ip_dst), ntohs(packet->ip_len));
         write(tun_fd, (void*)_payload, _header[0]);
     }
     return 0;
