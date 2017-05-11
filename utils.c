@@ -585,7 +585,7 @@ static int receive_bladerf_packet(unsigned char *_header,
     {
         struct ip* packet = (struct ip*)_payload;
 
-        printf("Received: %s -> %s : %d\n", inet_ntoa(packet->ip_src), inet_ntoa(packet->ip_dst), ntohs(packet->ip_len));
+        //printf("Received: %s -> %s : %d\n", inet_ntoa(packet->ip_src), inet_ntoa(packet->ip_dst), ntohs(packet->ip_len));
         write(tun_fd, (void*)_payload, _header[0]);
     }
     return 0;
@@ -610,7 +610,7 @@ void* do_TX(void *arg)
             close(tun_fd);
             exit(1);
         }
-        show_tun_packet(buffer);
+        //show_tun_packet(buffer);
 
 
 

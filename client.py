@@ -1,17 +1,24 @@
 import socket
-from time import sleep
+from time import sleep, time
+from sys import argv
 
 UDP_IP = "10.10.10.100"
 UDP_PORT = 8000
-MESSAGE = "ESREF"
 
-print "UDP target IP:", UDP_IP
-print "UDP target port:", UDP_PORT
-print "message:", MESSAGE
+N = 1000
 
 sock = socket.socket(socket.AF_INET, # Internet
                      socket.SOCK_DGRAM) # UDP
 
-for i in range(1,1001):
-    sock.sendto(str(i), (UDP_IP, UDP_PORT))
+filename = argv[1]
+
+f = open(filename, 'w')
+
+for i in range(N):
+    now = repr(time())
+    sock.sendto(now, (UDP_IP, UDP_PORT))
+    f.write(now+'\n')
     sleep(0.05)
+for i in range(100):
+    sock.sendto("STOP", (UDP_IP, UDP_PORT))
+f.close()
