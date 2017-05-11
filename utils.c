@@ -37,7 +37,7 @@
 
 
 #define  NUMBER_OF_BUFFERS 16
-#define  SAMPLE_SET_SIZE 8192
+#define  SAMPLE_SET_SIZE 1024
 #define  BUFFER_SIZE    SAMPLE_SET_SIZE*sizeof(int32_t)
 #define  NUMBER_OF_TRANSFERS 8
 #define  TIMEOUT_IN_MS 1000
