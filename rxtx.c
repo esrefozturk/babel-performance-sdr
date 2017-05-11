@@ -32,7 +32,7 @@
 int main(int argc, char *argv[])
 {
 
-    if(argc < 6)
+    if(argc < 5)
     {
         perror("Usage: TBD");
         exit(1);
@@ -42,11 +42,11 @@ int main(int argc, char *argv[])
     strcpy(tun,argv[2]);
     strcpy(ip,argv[3]);
     strcpy(netmask,argv[4]);
-    strcpy(route,argv[5]);
+
 
 
     init_bladerf(serial, TX_MODULE);
-    init_tun(tun, ip, netmask, route);
+    init_tun(tun, ip, netmask);
 
 
 

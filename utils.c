@@ -60,7 +60,7 @@ char buffer[1500];
 char tun[100];
 char ip[100];
 char netmask[100];
-char route[100];
+
 char serial[100];
 int tun_fd;
 
@@ -491,26 +491,26 @@ struct bladerf* init_bladerf(char* serial, int MODULE_TYPE)
     return dev;
 }
 
-void init_tun(char* tun, char* ip, char* netmask, char* route)
+void init_tun(char* tun, char* ip, char* netmask)
 {
     char tun_path[100] = "/dev/";
     char syscall1[100];
     char syscall2[100];
     char syscall3[100];
-    char syscall4[100];
+
 
     strcat(tun_path,tun);
 
     sprintf(syscall1, "ifconfig %s %s %s", tun,ip,netmask);
     sprintf(syscall2, "ifconfig %s up", tun);
     sprintf(syscall3, "ifconfig %s", tun);
-    sprintf(syscall4, "sudo route add %s -interface %s", route, tun);
+
 
 
     printf("%s\n",syscall1);
     printf("%s\n",syscall2);
     printf("%s\n",syscall3);
-    printf("%s\n",syscall4);
+
 
 
 
@@ -526,8 +526,7 @@ void init_tun(char* tun, char* ip, char* netmask, char* route)
         exit(1);
     if(system(syscall3))
         exit(1);
-    if(system(syscall4))
-        exit(1);
+
 
     return ;
 }
