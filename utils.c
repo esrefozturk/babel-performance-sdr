@@ -74,6 +74,7 @@ flexframegenprops_s ffp;
 int i;
 flexframegen fg;
 
+int incoming_packet_count=0;
 
 
 
@@ -583,7 +584,12 @@ static int receive_bladerf_packet(unsigned char *_header,
 {
     if (_header_valid)
     {
+
         struct ip* packet = (struct ip*)_payload;
+
+        incoming_packet_count++;
+
+        printf("%d %s %s\n",incoming_packet_count, inet_ntoa(packet->ip_src), inet_ntoa(packet->ip_dst));
 
         //printf("Received: %s -> %s : %d\n", inet_ntoa(packet->ip_src), inet_ntoa(packet->ip_dst), ntohs(packet->ip_len));
         write(tun_fd, (void*)_payload, _header[0]);
@@ -598,8 +604,10 @@ static int receive_bladerf_packet(unsigned char *_header,
 
 void* do_TX(void *arg)
 {
+
     int nread;
 
+    int count = 0;
     while(1)
     {
 
@@ -610,7 +618,7 @@ void* do_TX(void *arg)
             close(tun_fd);
             exit(1);
         }
-        //show_tun_packet(buffer);
+        show_tun_packet(buffer);
 
 
 
@@ -638,7 +646,6 @@ void* do_TX(void *arg)
 
 void* do_RX(void *arg)
 {
-
     fs = flexframesync_create(receive_bladerf_packet, (void *) &frame_counter);
     sync_rx(dev, &process_samples);
     return NULL;

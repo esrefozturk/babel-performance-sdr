@@ -9,9 +9,18 @@ link_directories(/usr/local/lib)
 link_directories(/opt/local/lib)
 
 add_executable( rxtx
-    ${PROJECT_SOURCE_DIR}/rxtx.c
+        ${PROJECT_SOURCE_DIR}/rxtx.c
+        )
+add_executable( rx
+        ${PROJECT_SOURCE_DIR}/rx.c
+        )
+add_executable( tx
+        ${PROJECT_SOURCE_DIR}/tx.c
+        )
 
-)
 
 
 target_link_libraries(rxtx bladeRF m c liquid)
+target_link_libraries(rx bladeRF m c liquid)
+target_link_libraries(tx bladeRF m c liquid)
+
