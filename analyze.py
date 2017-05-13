@@ -5,6 +5,8 @@ total = 0
 count = 0
 
 for filename in lst:
+    count = 0
+    total = 0
     filename = filename + '.recv.csv'
     for line in open(filename).read().strip().split('\n'):
         line = line.split(',')
